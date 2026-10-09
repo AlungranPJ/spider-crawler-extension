@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="ui.css">
+  <style>body { width: 270px; }</style>
+</head>
+<body>
+  <h1><span class="logo">🕷</span> Spider Crawler</h1>
+  <label class="toggle"><input type="checkbox" id="enabled"> Crawl pages</label>
+
+  <div class="field">
+    <span>Hunt for <small>(empty = every link)</small></span>
+    <input type="text" id="hunt" placeholder="e.g. spiders, pricing, AI papers">
+  </div>
+
+  <div class="row2">
+    <div class="field">
+      <span>Skin</span>
+      <select id="skin"></select>
+    </div>
+    <div class="field">
+      <span>Mode</span>
+      <select id="mode">
+        <option value="neon">Neon</option>
+        <option value="8bit">8-bit</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="stat" id="jevState">Jev: …</div>
+  <div class="stat">Logged finds: <b id="count">0</b></div>
+
+  <div class="btns">
+    <button id="export">Export log</button>
+    <button id="clear">Clear log</button>
+  </div>
+  <button id="options" class="primary">Skins, colors &amp; Jev settings</button>
+
+  <script src="shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

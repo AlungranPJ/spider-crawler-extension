@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Spider Crawler settings</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    body { max-width: 760px; margin: 0 auto; padding: 24px 20px 120px; }
+    .colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .colors label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+    .colors input[type=color] { width: 100%; height: 34px; border: 1px solid var(--border); border-radius: 7px; background: #0a0512; padding: 2px; cursor: pointer; }
+    .inline { display: flex; gap: 8px; align-items: center; }
+    .inline > * { flex: 1; }
+    .inline > button { flex: 0 0 auto; }
+    input[type=range] { width: 100%; accent-color: var(--green); }
+    .playground a { color: var(--green); margin-right: 14px; line-height: 2.2; white-space: nowrap; }
+    .playground p { margin: 6px 0; }
+    #status { position: fixed; left: 20px; bottom: 16px; padding: 6px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--border); opacity: 0; transition: opacity .3s; }
+    #status.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <h1><span class="logo">🕷</span> Spider Crawler settings</h1>
+  <p class="note">Changes apply live. The spider is crawling this page too, so you can preview every change on the playground links below.</p>
+
+  <div class="card">
+    <h2>Look</h2>
+    <div class="row2">
+      <div class="field"><span>Render mode</span>
+        <select id="mode"><option value="neon">Neon (glow, smooth)</option><option value="8bit">8-bit (pixel art)</option></select>
+      </div>
+      <div class="field"><span>Skin</span><select id="skin"></select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><span>Size <small id="sizeV"></small></span><input type="range" id="size" min="0.5" max="2" step="0.05"></div>
+      <div class="field"><span>Speed <small id="speedV"></small></span><input type="range" id="speed" min="0.5" max="2" step="0.05"></div>
+    </div>
+    <label class="toggle"><input type="checkbox" id="showHud"> Show the finds counter (HUD)</label>
+  </div>
+
+  <div class="card">
+    <h2>Skin editor</h2>
+    <p class="note">Start from the selected skin, change colors, then save it as your own skin. Skins export as JSON so you can share them.</p>
+    <div class="colors" id="colors"></div>
+    <div class="inline" style="margin-top:10px">
+      <input type="text" id="skinName" placeholder="My skin name">
+      <button id="saveSkin" class="primary" style="width:auto;margin:0">Save skin</button>
+      <button id="deleteSkin">Delete</button>
+    </div>
+    <div class="field">
+      <span>Skin JSON (export / paste to import)</span>
+      <textarea id="skinJson" spellcheck="false"></textarea>
+    </div>
+    <div class="btns">
+      <button id="exportSkin">Show current skin JSON</button>
+      <button id="importSkin">Import JSON as skin</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Hunt &amp; Jev</h2>
+    <div class="field"><span>Hunt for <small>(empty = every link is a find)</small></span>
+      <input type="text" id="hunt" placeholder="e.g. spiders, open-source AI tools, job postings">
+    </div>
+    <label class="toggle"><input type="checkbox" id="wrapRejects"> Wrap links that do not match in silk</label>
+    <label class="toggle"><input type="checkbox" id="useJev"> Let Jev judge links (needs an API key, otherwise keyword match)</label>
+    <div class="row2">
+      <div class="field"><span>Jev provider</span>
+        <select id="jevProvider">
+          <option value="typesafe">TypeSafe (api.typesafe.ai)</option>
+          <option value="zen">OpenCode Zen (free tier)</option>
+          <option value="openrouter">OpenRouter Decisions API</option>
+          <option value="venice">Venice</option>
+        </select>
+      </div>
+      <div class="field"><span>Bite threshold <small id="thV"></small></span><input type="range" id="jevThreshold" min="0.1" max="0.9" step="0.05"></div>
+    </div>
+    <div class="field"><span>API key <small id="keyState"></small></span>
+      <div class="inline">
+        <input type="password" id="jevKey" placeholder="Paste key, then Save" autocomplete="off">
+        <button id="saveKey">Save key</button>
+        <button id="clearKey">Remove</button>
+      </div>
+    </div>
+    <div class="inline"><button id="testKey">Test Jev</button><span id="testOut" class="note"></span></div>
+    <p class="note">The key is stored only in this browser (chrome.storage.local, never synced) and is sent only to the provider you pick. It is never sent to any page.</p>
+  </div>
+
+  <div class="card playground">
+    <h2>Playground</h2>
+    <p>Try hunting for <b>spiders</b>:
+      <a href="https://en.wikipedia.org/wiki/Jumping_spider">Jumping spider</a>
+      <a href="https://en.wikipedia.org/wiki/Tarantula">Tarantula</a>
+      <a href="https://en.wikipedia.org/wiki/Spider_silk">Spider silk</a>
+      <a href="https://en.wikipedia.org/wiki/Orb-weaver_spider">Orb-weaver</a>
+      <a href="https://en.wikipedia.org/wiki/Black_widow_spider">Black widow</a>
+    </p>
+    <p>Decoys:
+      <a href="https://en.wikipedia.org/wiki/Banana">Banana</a>
+      <a href="https://en.wikipedia.org/wiki/Bicycle">Bicycle</a>
+      <a href="https://example.com/privacy">Privacy policy</a>
+      <a href="https://en.wikipedia.org/wiki/Jazz">Jazz</a>
+      <a href="https://en.wikipedia.org/wiki/Volcano">Volcano</a>
+    </p>
+  </div>
+
+  <div id="status"></div>
+  <script src="shared.js"></script>
+  <script src="options.js"></script>
+  <script src="content.js"></script>
+</body>
+</html>

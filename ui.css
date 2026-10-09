@@ -1,0 +1,34 @@
+:root {
+  --bg: #0d0716; --card: #170c26; --fg: #e9ddff; --muted: #a58fc7;
+  --purple: #b04dff; --green: #39ff88; --border: #3a1f5c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 14px; background: var(--bg); color: var(--fg); font: 13px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; }
+h1 { font-size: 16px; margin: 0 0 12px; letter-spacing: .02em; }
+h1 .logo { filter: drop-shadow(0 0 6px var(--green)); }
+h2 { font-size: 14px; margin: 22px 0 8px; color: var(--green); letter-spacing: .04em; text-transform: uppercase; }
+small { color: var(--muted); font-weight: 400; }
+.field { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.field > span { color: var(--muted); font-size: 12px; }
+input[type=text], input[type=password], select, textarea {
+  width: 100%; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--border);
+  background: #0a0512; color: var(--fg); font: inherit;
+}
+input:focus, select:focus, textarea:focus { outline: 1px solid var(--green); border-color: var(--green); }
+textarea { font: 12px/1.4 ui-monospace, Consolas, monospace; min-height: 120px; }
+.toggle { display: flex; align-items: center; gap: 8px; margin: 6px 0; cursor: pointer; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat { margin: 6px 0; color: var(--muted); }
+.stat b { color: var(--green); }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+button {
+  padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card);
+  color: var(--fg); cursor: pointer; font: inherit;
+}
+button:hover { border-color: var(--purple); }
+button.primary { width: 100%; margin-top: 6px; background: linear-gradient(135deg, #3a1268, #0f3a24); border-color: var(--purple); }
+button.primary:hover { box-shadow: 0 0 12px rgba(176, 77, 255, .5); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+.note { color: var(--muted); font-size: 12px; }
+.ok { color: var(--green); }
+.bad { color: #ff6b8b; }
