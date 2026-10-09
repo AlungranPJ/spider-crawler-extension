@@ -6,9 +6,7 @@ It crawls the page, **grabs the links you are hunting for** and **wraps everythi
 
 Turn on **Jev** (a decision model) and it judges every link by meaning, not keywords. On real Wikipedia pages that took about **17 to 20 ms per link**.
 
-<video src="https://github.com/AlungranPJ/spider-crawler-extension/raw/main/docs/showcase.mp4" controls muted width="100%"></video>
-
-▶ If the player above does not load: [watch the 38 s showcase clip (mp4)](docs/showcase.mp4)
+**▶ [Watch the 38 s showcase clip (mp4)](https://github.com/AlungranPJ/spider-crawler-extension/raw/main/docs/showcase.mp4)**: spider + Jev, octopus, slime, 8-bit.
 
 | 🕷 Spider + Jev hunt | 🐙 Octopus + Jev hunt |
 |---|---|
