@@ -38,6 +38,7 @@
 
   const DEFAULTS = {
     enabled: true,
+    creature: 'spider',    // 'spider' | 'octopus' | 'slime'
     mode: 'neon',          // 'neon' | '8bit'
     skin: 'venom',         // built-in id or 'custom:<name>'
     customSkins: {},       // { name: {shell,...} }

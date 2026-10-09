@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Spider Crawler",
-  "version": "1.0.0",
-  "description": "A big IK-legged spider crawls any web page, bites the links you hunt for and wraps the rest in silk. Skins, 8-bit mode, optional Jev AI judging.",
+  "version": "1.1.0",
+  "description": "A spider, octopus or slime crawls any web page, grabs the links you hunt for and wraps the rest. Skins, 8-bit mode, optional Jev AI judging.",
   "permissions": ["storage"],
   "host_permissions": [
     "https://api.typesafe.ai/*",

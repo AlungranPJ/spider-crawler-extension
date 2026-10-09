@@ -78,6 +78,7 @@ chrome.storage.local.get(Object.assign({}, DEFAULTS, { jevKeySet: false, jevProv
   fillSkins();
   loadColors();
   $('mode').value = v.mode;
+  $('creature').value = v.creature;
   $('size').value = v.size; $('sizeV').textContent = `${(+v.size).toFixed(2)}x`;
   $('speed').value = v.speed; $('speedV').textContent = `${(+v.speed).toFixed(2)}x`;
   $('showHud').checked = !!v.showHud;
@@ -90,6 +91,7 @@ chrome.storage.local.get(Object.assign({}, DEFAULTS, { jevKeySet: false, jevProv
 });
 
 $('mode').addEventListener('change', () => set({ mode: $('mode').value }));
+$('creature').addEventListener('change', () => set({ creature: $('creature').value }));
 $('skin').addEventListener('change', () => { state.skin = $('skin').value; set({ skin: state.skin }); loadColors(); });
 $('size').addEventListener('input', () => { $('sizeV').textContent = `${(+$('size').value).toFixed(2)}x`; set({ size: +$('size').value }); });
 $('speed').addEventListener('input', () => { $('speedV').textContent = `${(+$('speed').value).toFixed(2)}x`; set({ speed: +$('speed').value }); });

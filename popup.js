@@ -20,6 +20,7 @@ chrome.storage.local.get(Object.assign({}, DEFAULTS, { crawlLog: [], jevKeySet: 
   $('enabled').checked = !!v.enabled;
   $('hunt').value = v.hunt || '';
   $('mode').value = v.mode;
+  $('creature').value = v.creature;
   fillSkins($('skin'), v);
   $('count').textContent = String((v.crawlLog || []).length);
   $('jevState').textContent = jevLine(v);
@@ -27,6 +28,7 @@ chrome.storage.local.get(Object.assign({}, DEFAULTS, { crawlLog: [], jevKeySet: 
 
 $('enabled').addEventListener('change', () => chrome.storage.local.set({ enabled: $('enabled').checked }));
 $('mode').addEventListener('change', () => chrome.storage.local.set({ mode: $('mode').value }));
+$('creature').addEventListener('change', () => chrome.storage.local.set({ creature: $('creature').value }));
 $('skin').addEventListener('change', () => chrome.storage.local.set({ skin: $('skin').value }));
 let huntTimer = null;
 $('hunt').addEventListener('input', () => {

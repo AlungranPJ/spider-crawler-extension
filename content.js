@@ -105,31 +105,46 @@
     return o1 >= o2 ? k1 : k2;
   }
 
-  // ---- spider construction -------------------------------------------------
+  // ---- creature construction -----------------------------------------------
+  // octopus arms radiate all round the arm crown; ang measured from heading
+  const OCTO_DEFS = [
+    { ang: 0.42, reach: 1.12 },
+    { ang: 1.12, reach: 1.02 },
+    { ang: 1.85, reach: 1.00 },
+    { ang: 2.55, reach: 1.10 },
+  ];
+
   function buildSpider(x, y, h) {
     const scale = (window.innerWidth < 640 ? 0.7 : 1) * clamp(+cfg.size || 1, 0.5, 2);
-    const R = 112 * scale;
+    const kind = cfg.creature;
+    const R = (kind === 'octopus' ? 104 : 112) * scale;
     const legs = [];
-    for (const side of [-1, 1]) {
-      LEG_DEFS.forEach((def, i) => {
-        const hip = { x: def.hipX * scale, y: side * 9 * scale };
-        const len = R * def.reach;
-        legs.push({
-          i, side, hip,
-          rest: { x: hip.x + Math.cos(def.ang) * len * 0.78, y: hip.y + side * Math.sin(def.ang) * len * 0.78 },
-          l1: len * 0.66, l2: len * 0.66,
-          group: (i + (side > 0 ? 1 : 0)) % 2,
-          foot: null, from: null, to: null, t: 0, stepping: false, lift: 0,
+    if (kind !== 'slime') {
+      for (const side of [-1, 1]) {
+        const defs = kind === 'octopus' ? OCTO_DEFS : LEG_DEFS;
+        defs.forEach((def, i) => {
+          const hip = kind === 'octopus'
+            ? { x: Math.cos(def.ang) * 7 * scale, y: side * Math.sin(def.ang) * 7 * scale }
+            : { x: def.hipX * scale, y: side * 9 * scale };
+          const len = R * def.reach;
+          legs.push({
+            i, side, hip,
+            rest: { x: hip.x + Math.cos(def.ang) * len * 0.78, y: hip.y + side * Math.sin(def.ang) * len * 0.78 },
+            l1: len * 0.66, l2: len * 0.66,
+            group: (i + (side > 0 ? 1 : 0)) % 2,
+            foot: null, from: null, to: null, t: 0, stepping: false, lift: 0,
+          });
         });
-      });
+      }
     }
     const prev = sp;
     sp = {
       x, y, h: h == null ? Math.random() * Math.PI * 2 : h,
-      vx: 0, vy: 0, speed: 0, scale, R, legs,
+      vx: 0, vy: 0, speed: 0, scale, R, legs, kindOf: kind,
       tx: x, ty: y, target: null, kind: null,
       state: 'idle', waitUntil: performance.now() + 400,
       bob: 0, silk: null, stepsTaken: 0,
+      hop: 0, squash: 0, trail: [], lastDrop: null,
     };
     if (prev && prev.target) prev.target.el.classList.remove('__spider_hit');
     for (const leg of legs) {
@@ -156,7 +171,8 @@
       transition:transform .85s ${r8 ? 'steps(8)' : 'cubic-bezier(.5,-0.3,.7,1)'},opacity .85s ease-in}
     #__spider_hud{position:fixed;right:12px;bottom:12px;z-index:2147483647;pointer-events:none;font:${font};letter-spacing:.04em;color:${k.legTip};
       background:${r8 ? k.shell : `linear-gradient(135deg,${hexA(k.shell, 0.94)},${hexA(k.shellMid, 0.94)})`};border:${r8 ? 3 : 1}px solid ${k.leg};
-      box-shadow:${hudShadow};padding:6px 12px;border-radius:${radius};${r8 ? 'text-transform:uppercase;' : ''}}
+      box-shadow:${hudShadow};padding:6px 12px;border-radius:${radius};${r8 ? 'text-transform:uppercase;' : ''}
+      max-width:calc(100vw - 24px);box-sizing:border-box}
     #__spider_hud b{color:${k.accent};${r8 ? '' : `text-shadow:0 0 8px ${k.accent}`}}
     #__spider_hud i{font-style:normal;opacity:.75}
   `;
@@ -218,7 +234,8 @@
       tail = ' <i>&middot; keyword</i>';
     }
     const w = mode === 'all' ? '' : ` &middot; <b>${wrapped}</b> wrapped`;
-    hud.innerHTML = `\u{1F577} CRAWLER &middot; <b>${finds}</b> ${finds === 1 ? 'find' : 'finds'}${w}${tail}`;
+    const icon = { spider: '\u{1F577}', octopus: '\u{1F419}', slime: '\u{1F9EA}' }[cfg.creature] || '\u{1F577}';
+    hud.innerHTML = `${icon} CRAWLER &middot; <b>${finds}</b> ${finds === 1 ? 'find' : 'finds'}${w}${tail}`;
   }
 
   // ---- link discovery + judging -----------------------------------------------
@@ -379,14 +396,16 @@
     const el = t.el;
     const v = t.v || { p: null, by: 'all' };
     if (kind === 'wrap') {
-      cocoons.push({ x: cx, y: cy, w: r.width, h: r.height, t: 0, dur: WRAP_MS / 1000 });
-      sp.silk = { x: cx, y: cy, until: now + WRAP_MS };
+      const blobs = [];
+      for (let b = 0; b < 7; b++) blobs.push({ a: Math.random() * Math.PI * 2, d: Math.random(), r: 0.5 + Math.random() * 0.6 });
+      cocoons.push({ x: cx, y: cy, w: r.width, h: r.height, t: 0, dur: WRAP_MS / 1000, kind: cfg.creature, blobs });
+      sp.silk = { x: cx, y: cy, until: now + WRAP_MS, start: now };
       wrapped++;
       setTimeout(() => { el.classList.remove('__spider_hit'); el.classList.add('__spider_cocoon'); }, WRAP_MS * 0.6);
       sp.waitUntil = now + WRAP_MS;
     } else {
       rings.push({ x: cx, y: cy, t: 0 });
-      sp.silk = { x: cx, y: cy, until: now + BITE_MS };
+      sp.silk = { x: cx, y: cy, until: now + BITE_MS, start: now };
       ripChip(t, r.left, r.top);
       finds++;
       queueLog({ text: t.text, href: t.href, page: location.href, at: Date.now(), hunt: cfg.hunt || null, p: v.p, by: v.by });
@@ -412,12 +431,23 @@
     }
     for (const r of rings) { r.x -= dx; r.y -= dy; }
     for (const c of cocoons) { c.x -= dx; c.y -= dy; }
+    for (const t of sp.trail) { t.x -= dx; t.y -= dy; }
+    if (sp.lastDrop) { sp.lastDrop.x -= dx; sp.lastDrop.y -= dy; }
     if (sp.silk) { sp.silk.x -= dx; sp.silk.y -= dy; }
   }
 
   function moveBody(dt, now) {
+    const slime = sp.kindOf === 'slime';
+    if (slime) {
+      // slime trail ages out
+      for (let i = sp.trail.length - 1; i >= 0; i--) {
+        sp.trail[i].t += dt;
+        if (sp.trail[i].t > 2.6) sp.trail.splice(i, 1);
+      }
+    }
     if (sp.state === 'collect' || sp.state === 'idle') {
       sp.speed = 0;
+      sp.squash = lerp(sp.squash, 0, Math.min(1, dt * 6));
       if (now >= sp.waitUntil) assignTarget();
       return;
     }
@@ -437,7 +467,8 @@
     const dx = sp.tx - sp.x;
     const dy = sp.ty - sp.y;
     const dist = Math.hypot(dx, dy);
-    if (dist < 8) {
+    const stopDist = sp.kindOf === 'octopus' ? 72 * sp.scale : sp.kindOf === 'slime' ? 66 * sp.scale : 8;
+    if (dist < (sp.target ? stopDist : 8)) {
       sp.speed = 0;
       if (sp.target) arrive(now);
       else {
@@ -452,7 +483,15 @@
     const approach = clamp(dist / 70, 0.25, 1);
     const align = Math.max(0.3, Math.cos(diff));
     const speed = BASE_SPEED * clamp(+cfg.speed || 1, 0.5, 2) * (REDUCED ? 0.6 : 1);
-    const stepLen = Math.min(speed * approach * align * dt, dist);
+    let hopF = 1;
+    if (slime) {
+      // hop: surge forward on the up-beat, squash on landing
+      sp.hop += dt * 7.5 * Math.sqrt(clamp(+cfg.speed || 1, 0.5, 2));
+      const s = Math.sin(sp.hop);
+      hopF = 0.15 + 1.25 * Math.max(0, s);
+      sp.squash = 0.22 * s;
+    }
+    const stepLen = Math.min(speed * approach * align * hopF * dt, dist);
     let mx;
     let my;
     if (dist < 60) { mx = dx / dist; my = dy / dist; } else { mx = Math.cos(sp.h); my = Math.sin(sp.h); }
@@ -462,6 +501,15 @@
     sp.vx = mx * sp.speed;
     sp.vy = my * sp.speed;
     sp.bob += stepLen * 0.09;
+    if (slime) {
+      const ld = sp.lastDrop;
+      if (!ld || Math.hypot(sp.x - ld.x, sp.y - ld.y) > 9 * sp.scale) {
+        const drop = { x: sp.x, y: sp.y, t: 0, r: (18 + Math.random() * 8) * sp.scale };
+        sp.trail.push(drop);
+        sp.lastDrop = { x: sp.x, y: sp.y };
+        if (sp.trail.length > 160) sp.trail.shift();
+      }
+    }
   }
 
   function updateLegs(dt) {
@@ -660,9 +708,319 @@
     g.restore();
   }
 
+  // ---- octopus + slime ----------------------------------------------------------
+  function mixHex(a, b, t) {
+    const x = parseInt(a.slice(1), 16);
+    const y = parseInt(b.slice(1), 16);
+    const ch = (sh) => Math.round(lerp((x >> sh) & 255, (y >> sh) & 255, t));
+    return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+  }
+
+  function blob(g, x, y, rad, r8) {
+    if (r8) g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+    else { g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill(); }
+  }
+
+  // Tapered, wavy strand p0 -> p1 bent through ctrl (octopus arms, grabbing tentacle, slime pseudopod).
+  function drawStrand(g, p0, ctrl, p1, w0, w1, c0, c1, phase, amp, r8, cups) {
+    const N = r8 ? 10 : 18;
+    const pts = [];
+    for (let j = 0; j <= N; j++) {
+      const u = j / N;
+      const x = (1 - u) * (1 - u) * p0.x + 2 * (1 - u) * u * ctrl.x + u * u * p1.x;
+      const y = (1 - u) * (1 - u) * p0.y + 2 * (1 - u) * u * ctrl.y + u * u * p1.y;
+      const tx = 2 * (1 - u) * (ctrl.x - p0.x) + 2 * u * (p1.x - ctrl.x);
+      const ty = 2 * (1 - u) * (ctrl.y - p0.y) + 2 * u * (p1.y - ctrl.y);
+      const tl = Math.hypot(tx, ty) || 1;
+      const nx = -ty / tl;
+      const ny = tx / tl;
+      const wv = Math.sin(phase + u * 7) * amp * Math.sin(Math.PI * u);
+      pts.push({ x: x + nx * wv, y: y + ny * wv, nx, ny });
+    }
+    g.lineCap = r8 ? 'square' : 'round';
+    for (let j = 0; j < N; j++) {
+      const u = j / N;
+      g.strokeStyle = r8 ? (u < 0.5 ? c0 : c1) : mixHex(c0, c1, u);
+      g.lineWidth = lerp(w0, w1, u);
+      g.beginPath(); g.moveTo(pts[j].x, pts[j].y); g.lineTo(pts[j + 1].x, pts[j + 1].y); g.stroke();
+    }
+    if (cups) {
+      g.shadowBlur = 0;
+      g.fillStyle = cups;
+      for (let j = 2; j < N; j += (r8 ? 2 : 3)) {
+        const w = lerp(w0, w1, j / N);
+        const q = pts[j];
+        blob(g, q.x + q.nx * w * 0.2, q.y + q.ny * w * 0.2, Math.max(r8 ? PIX * 0.6 : 1, w * 0.2), r8);
+      }
+    }
+    return pts[N];
+  }
+
+  function drawArm(g, leg, now, r8) {
+    const k = skin;
+    const s = sp.scale;
+    const hip = toWorld(leg.hip.x, leg.hip.y);
+    const nx = -Math.sin(sp.h) * leg.side;
+    const ny = Math.cos(sp.h) * leg.side;
+    const lift = leg.lift * sp.R * 0.14;
+    const foot = { x: leg.foot.x + nx * lift, y: leg.foot.y + ny * lift };
+    const knee = solveKnee(hip.x, hip.y, foot.x, foot.y, leg.l1, leg.l2, leg.side);
+    const mx = (hip.x + foot.x) / 2;
+    const my = (hip.y + foot.y) / 2;
+    const ctrl = { x: mx + (knee.x - mx) * 1.4, y: my + (knee.y - my) * 1.4 };
+    glow(g, k.glow, 10, r8);
+    drawStrand(g, hip, ctrl, foot, (r8 ? 16 : 15) * s, (r8 ? 6 : 2.8) * s, k.leg, k.legTip,
+      now / 170 + leg.i * 1.7 + leg.side, (3 + leg.lift * 5) * s, r8, k.shellHi);
+    glow(g, k.accent, 12, r8);
+    g.fillStyle = leg.lift > 0.05 ? '#ffffff' : k.legTip;
+    blob(g, foot.x, foot.y, (r8 ? 4 : 2.2 + leg.lift * 1.6) * s, r8);
+  }
+
+  function drawOctoBody(g, now, r8) {
+    const k = skin;
+    const s = sp.scale;
+    const pulse = 1 + Math.sin(now / 420) * 0.05 + Math.sin(sp.bob) * 0.03;
+    if (!r8) {
+      g.save();
+      g.translate(sp.x + 7 * s, sp.y + 11 * s);
+      g.rotate(sp.h);
+      g.fillStyle = 'rgba(0,0,0,.28)';
+      g.shadowColor = 'rgba(0,0,0,.5)';
+      g.shadowBlur = 18;
+      g.beginPath(); g.ellipse(-16 * s, 0, 44 * s, 30 * s, 0, 0, Math.PI * 2); g.fill();
+      g.restore();
+    }
+    g.save();
+    g.translate(sp.x, sp.y);
+    g.rotate(sp.h);
+    g.scale(s, s);
+    // mantle
+    g.save();
+    g.translate(-24, 0);
+    g.scale(pulse, 1 / pulse);
+    if (r8) g.fillStyle = k.shellMid;
+    else {
+      const mg = g.createRadialGradient(-8, -10, 4, 0, 0, 38);
+      mg.addColorStop(0, k.shellHi);
+      mg.addColorStop(0.6, k.shellMid);
+      mg.addColorStop(1, k.shell);
+      g.fillStyle = mg;
+    }
+    glow(g, k.glow, 22, r8);
+    g.beginPath(); g.ellipse(0, 0, 34, 26, 0, 0, Math.PI * 2); g.fill();
+    g.lineWidth = r8 ? 4 : 1.6;
+    g.strokeStyle = r8 ? k.shell : k.glow;
+    g.stroke();
+    glow(g, k.accent, 10, r8);
+    g.fillStyle = hexA(k.accent, r8 ? 1 : 0.75);
+    for (const [x, y, r] of [[-14, -9, 4], [-4, 10, 3.2], [7, -13, 3], [-22, 6, 3], [3, 1, 2.6], [-12, 14, 2.4]]) blob(g, x, y, r8 ? Math.max(r, PIX) : r, r8);
+    if (!r8) {
+      g.shadowBlur = 0;
+      g.fillStyle = 'rgba(255,255,255,.12)';
+      g.beginPath(); g.ellipse(-6, -13, 16, 5, -0.25, 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+    // head / arm crown
+    if (r8) g.fillStyle = k.shell;
+    else {
+      const hg = g.createRadialGradient(4, -6, 2, 2, 0, 20);
+      hg.addColorStop(0, k.shellHi);
+      hg.addColorStop(1, k.shellMid);
+      g.fillStyle = hg;
+    }
+    glow(g, k.accent, 12, r8);
+    g.beginPath(); g.ellipse(3, 0, 16, 19, 0, 0, Math.PI * 2); g.fill();
+    g.lineWidth = r8 ? 3 : 1.4;
+    g.strokeStyle = k.accent;
+    g.stroke();
+    // eyes: big, with the horizontal octopus pupil
+    for (const side of [-1, 1]) {
+      glow(g, k.eye, 12, r8);
+      g.fillStyle = k.legTip;
+      if (r8) g.fillRect(3, side * 11 - 5, 10, 10);
+      else { g.beginPath(); g.ellipse(7, side * 11, 6, 5.2, 0, 0, Math.PI * 2); g.fill(); }
+      g.shadowBlur = 0;
+      g.fillStyle = k.eye;
+      blob(g, 8, side * 11, r8 ? 3 : 3.6, r8);
+      g.fillStyle = k.shell;
+      g.fillRect(5.6, side * 11 - (r8 ? 1.5 : 0.9), 5, r8 ? 3 : 1.8);
+    }
+    g.restore();
+  }
+
+  function slimePath(g, now, r8) {
+    const N = r8 ? 16 : 30;
+    const base = 42;
+    const st = sp.squash;
+    const drag = Math.min(0.35, sp.speed * 0.0012);
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const wob = 1 + 0.05 * Math.sin(now / 230 + i * 0.9) + 0.035 * Math.sin(now / 140 + i * 2.3);
+      const c = Math.cos(a);
+      const rx = base * (1 + st) * wob * (c < 0 ? 1 + drag * -c : 1);
+      const ry = base * (1 - st * 0.7) * wob;
+      pts.push({ x: c * rx, y: Math.sin(a) * ry });
+    }
+    g.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const p = pts[i % N];
+      const q = pts[(i + 1) % N];
+      const mx = (p.x + q.x) / 2;
+      const my = (p.y + q.y) / 2;
+      if (i === 0) g.moveTo(mx, my); else g.quadraticCurveTo(p.x, p.y, mx, my);
+    }
+    g.closePath();
+  }
+
+  function drawSlime(g, now, r8) {
+    const k = skin;
+    const s = sp.scale;
+    if (!r8) {
+      g.save();
+      g.translate(sp.x + 6 * s, sp.y + 12 * s);
+      g.rotate(sp.h);
+      g.scale(s, s);
+      g.fillStyle = 'rgba(0,0,0,.25)';
+      g.shadowColor = 'rgba(0,0,0,.45)';
+      g.shadowBlur = 16;
+      slimePath(g, now, r8);
+      g.fill();
+      g.restore();
+    }
+    g.save();
+    g.translate(sp.x, sp.y);
+    g.rotate(sp.h);
+    g.scale(s, s);
+    slimePath(g, now, r8);
+    if (r8) g.fillStyle = k.leg;
+    else {
+      const sg = g.createRadialGradient(-10, -12, 4, 0, 0, 44);
+      sg.addColorStop(0, hexA(k.legTip, 0.95));
+      sg.addColorStop(0.45, hexA(k.leg, 0.88));
+      sg.addColorStop(1, hexA(k.shellMid, 0.92));
+      g.fillStyle = sg;
+    }
+    glow(g, k.glow, 24, r8);
+    g.fill();
+    g.lineWidth = r8 ? 4 : 2;
+    g.strokeStyle = r8 ? k.shell : k.accent;
+    g.stroke();
+    // core and floating bubbles
+    g.shadowBlur = 0;
+    g.fillStyle = hexA(k.accent, r8 ? 1 : 0.5);
+    blob(g, -8, 5, r8 ? 6 : 8, r8);
+    g.fillStyle = hexA(k.legTip, r8 ? 1 : 0.55);
+    for (let b = 0; b < 3; b++) {
+      const t = ((now / 900 + b * 0.33) % 1);
+      blob(g, -18 + b * 9, 14 - t * 30, r8 ? 2.5 : 2 + b * 0.6, r8);
+    }
+    if (!r8) {
+      g.fillStyle = 'rgba(255,255,255,.38)';
+      g.beginPath(); g.ellipse(-8, -16, 11, 4, -0.4, 0, Math.PI * 2); g.fill();
+    }
+    // face
+    for (const side of [-1, 1]) {
+      g.fillStyle = k.shell;
+      if (r8) g.fillRect(10, side * 9 - 4, 6, 8);
+      else { g.beginPath(); g.ellipse(13, side * 9, 3.6, 4.8, 0, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = '#ffffff';
+      blob(g, 14, side * 9 - 1.6, r8 ? 1.5 : 1.3, r8);
+    }
+    g.strokeStyle = k.shell;
+    g.lineWidth = r8 ? 3 : 1.6;
+    g.beginPath(); g.arc(18, 0, 3.2, -1.1, 1.1); g.stroke();
+    g.restore();
+  }
+
+  function drawTrail(g, r8) {
+    const k = skin;
+    g.save();
+    g.shadowBlur = 0;
+    g.fillStyle = k.leg;
+    for (const d of sp.trail) {
+      const life = 1 - d.t / 2.6;
+      if (r8) {
+        // the 8-bit alpha snap would erase a translucent trail: draw sparse solid goo pixels instead
+        g.globalAlpha = 1;
+        if (life > 0.25) {
+          const q = PIX * (life > 0.6 ? 1.5 : 1);
+          g.fillRect(d.x - d.r * 0.5, d.y + d.r * 0.2, q, q);
+          g.fillRect(d.x + d.r * 0.4, d.y - d.r * 0.3, q, q);
+        }
+        continue;
+      }
+      g.globalAlpha = 0.26 * life;
+      blob(g, d.x, d.y, d.r * (0.55 + 0.45 * life), r8);
+    }
+    g.restore();
+  }
+
+  function drawGrab(g, now, r8) {
+    // the reach towards the link being bitten/wrapped, per creature
+    const k = skin;
+    const s = sp.scale;
+    const ext = clamp((now - (sp.silk.start || now)) / 220, 0, 1);
+    const tgt = { x: sp.silk.x, y: sp.silk.y };
+    const from = toWorld((sp.kindOf === 'slime' ? 24 : 14) * s, 0);
+    const end = { x: lerp(from.x, tgt.x, ext), y: lerp(from.y, tgt.y, ext) };
+    const mx = (from.x + end.x) / 2;
+    const my = (from.y + end.y) / 2;
+    const len = Math.hypot(end.x - from.x, end.y - from.y) || 1;
+    const ctrl = { x: mx - (end.y - from.y) / len * 18, y: my + (end.x - from.x) / len * 18 };
+    g.save();
+    if (sp.kindOf === 'octopus') {
+      glow(g, k.glow, 10, r8);
+      drawStrand(g, from, ctrl, end, (r8 ? 12 : 9) * s, (r8 ? 5 : 2.4) * s, k.leg, k.legTip, now / 80, 4 * s, r8, k.shellHi);
+    } else {
+      g.globalAlpha = 0.9;
+      glow(g, k.glow, 16, r8);
+      drawStrand(g, from, { x: mx, y: my }, end, (r8 ? 24 : 22) * s, (r8 ? 10 : 7) * s, k.leg, k.legTip, now / 120, 2 * s, r8, null);
+      g.fillStyle = k.leg;
+      blob(g, end.x, end.y, (r8 ? 8 : 6) * s, r8);
+    }
+    g.restore();
+  }
+
+  function drawWrapFx(g, c, prog, fade, r8) {
+    const k = skin;
+    g.save();
+    g.globalAlpha = fade;
+    if (c.kind === 'octopus') {
+      // ink cloud
+      glow(g, k.glow, 14, r8);
+      g.fillStyle = hexA(k.shell, 0.82);
+      for (const b of c.blobs) {
+        const x = c.x + Math.cos(b.a) * b.d * c.w * 0.38;
+        const y = c.y + Math.sin(b.a) * b.d * c.h * 0.7;
+        blob(g, x, y, (5 + 22 * b.r * Math.min(1, prog * 1.6)), r8);
+      }
+      g.fillStyle = hexA(k.glow, 0.5);
+      for (const b of c.blobs.slice(0, 4)) blob(g, c.x + Math.cos(b.a) * (20 + 30 * prog), c.y + Math.sin(b.a) * (10 + 18 * prog), 2.5 * b.r + 1.5, r8);
+    } else {
+      // goo
+      const grow = Math.min(1, prog * 1.5);
+      glow(g, k.glow, 12, r8);
+      g.fillStyle = hexA(k.leg, 0.5);
+      const rx = (c.w / 2 + 8) * grow;
+      const ry = (c.h / 2 + 7) * grow;
+      if (r8) g.fillRect(c.x - rx, c.y - ry, rx * 2, ry * 2);
+      else { g.beginPath(); g.ellipse(c.x, c.y, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = hexA(k.leg, 0.75);
+      c.blobs.slice(0, 5).forEach((b) => {
+        const x = c.x + (b.d - 0.5) * c.w;
+        const y = c.y + c.h / 2 + 4 + prog * 26 * b.r;
+        blob(g, x, y, 2 + 3 * b.r, r8);
+      });
+    }
+    g.restore();
+  }
+
   function drawFx(g, now, dt, r8) {
     const k = skin;
-    if (sp.silk && now < sp.silk.until) {
+    if (sp.silk && now < sp.silk.until && sp.kindOf !== 'spider') {
+      drawGrab(g, now, r8);
+    } else if (sp.silk && now < sp.silk.until) {
       const sw = toWorld(-62 * sp.scale, 0);
       g.save();
       g.strokeStyle = hexA(k.legTip, 0.85);
@@ -707,6 +1065,7 @@
       if (q >= 1.4) { cocoons.splice(i, 1); continue; }
       const prog = Math.min(1, q);
       const fade = q > 1 ? 1 - (q - 1) / 0.4 : 1;
+      if (c.kind && c.kind !== 'spider') { drawWrapFx(g, c, prog, fade, r8); continue; }
       const rx = Math.max(18, c.w / 2 + 10) * (1.25 - 0.35 * prog);
       const ry = Math.max(12, c.h / 2 + 8) * (1.25 - 0.35 * prog);
       g.save();
@@ -730,8 +1089,16 @@
   }
 
   function drawScene(g, now, dt, r8) {
+    const kind = sp.kindOf;
+    if (kind === 'slime') drawTrail(g, r8);
     drawFx(g, now, dt, r8);
+    if (kind === 'slime') { drawSlime(g, now, r8); return; }
     const order = sp.legs.slice().sort((a, b) => b.i - a.i);
+    if (kind === 'octopus') {
+      for (const leg of order) drawArm(g, leg, now, r8);
+      drawOctoBody(g, now, r8);
+      return;
+    }
     for (const leg of order) drawLeg(g, leg, r8);
     drawBody(g, now, r8);
   }
@@ -780,6 +1147,8 @@
     d.jevPerLink = jev.perLink == null ? '' : String(jev.perLink);
     d.jevError = jev.error || '';
     d.scale = sp.scale.toFixed(2);
+    d.creature = sp.kindOf;
+    d.trail = String(sp.trail.length);
   }
 
   function tick(ts) {
@@ -853,7 +1222,7 @@
     if (!cfg.enabled) { stop(); return; }
     if (!running) { start(); return; }
     applyLook();
-    if (sp && cfg.size !== prevSize) buildSpider(sp.x, sp.y, sp.h);
+    if (sp && (cfg.size !== prevSize || cfg.creature !== sp.kindOf)) buildSpider(sp.x, sp.y, sp.h);
   }
 
   window.addEventListener('resize', () => {
